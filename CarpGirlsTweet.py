@@ -67,6 +67,9 @@ def getTweet(username, max_id, since_id):
 
         #レスポンスの確認
         if req.status_code == 200:
+
+            limit = req.headers['x-rate-limit-remaining']
+            print(limit)
             #レスポンスはJSON形式
             timeline = json.loads(req.text)
             try:
