@@ -11,8 +11,13 @@ accessSecret = 'USKxdciRz7GZwb1O6FtTKv3wur0Geq1515Md1X8IeOrC6'
 
 usernames = []
 search_words = "カープ女子"
+#取得するtweetの数
 tweetCount = '200'
-userCount = '5'
+#取得するユーザーの人数
+userCount = '10'
+
+sinceId = -1
+maxId = -1
 
 # タイムライン取得URL
 tweetUrl = "https://api.twitter.com/1.1/statuses/user_timeline.json"
@@ -35,6 +40,7 @@ def getUser():
         #レスポンスはJSON形式
         userSearch = json.loads(req.text)
         for tweet in userSearch:
+            #ユーザー名に"BOT"と入っているものは除外
             if tweet["name"].find("BOT") == -1:
                 s = tweet["id_str"]
                 usernames.append(s)
@@ -49,6 +55,7 @@ def getTweet(usernames):
     fw = open("input.txt", "w")
 
     for username in usernames:
+        #ReTweetは除外
         params = {'user_id': username, 'count': tweetCount, 'include_rts': 'false'}
 
         #OAuthでGET
@@ -63,11 +70,12 @@ def getTweet(usernames):
             for tweet in timeline:
                 s = tweet["text"].encode('utf-8')
                 if s.find("http") == -1:
+                    #リプライネーム部分消去
                     s = re.sub(r'@[A-Za-z0-9.-_]*', '', s)
+                    #ハッシュタグ部分消去
                     s = re.sub(r'#[A-Za-z0-9.-_]*', '', s)
-                    fw.write("\n%s" % s)
-                    print(req["x-rate-limit-remaing"])
-
+                    #ファイルへの書き込み
+                    fw.write("\n%s" % s)   
         else:
             print("Error: %d" % req.status_code)
 
