@@ -3,6 +3,8 @@
 from requests_oauthlib import OAuth1Session
 import json
 import re
+import time
+import datetime
 
 consumerKey = 'quTWDwlCp6n0FZqG36dxRrjWF'
 consumerSecret = 'DLZ2LGSYq5mxTOaI9TMGUHr7cvIvSqhbRE2xfRCnzxjS8S2cCA'
@@ -14,8 +16,8 @@ search_words = "カープ女子"
 #取得するtweetの数
 tweetCount = '200'
 #取得するユーザーの人数
-userCount = '15'
-tweets = 0
+userCount = '20'
+pages = '1'
 
 #OAuthでGET
 twitter = OAuth1Session(consumerKey, consumerSecret, accessToken, accessSecret)
@@ -31,24 +33,31 @@ params = {}
 fw = open("input.txt", "w")
 
 
+#現在時刻をUNIX Timeで返す
+def now_unix_time():
+    return time.mktime(datetime.datetime.now().timetuple())
+
+
 def getUser():
+    pages = 1
+    while(pages < 8):
+        params = {'q': search_words, 'page': str(pages), 'count': userCount}
+        req = twitter.get(userUrl, params=params)
 
-    params = {'q': search_words, 'count': userCount}
-
-    req = twitter.get(userUrl, params=params)
-
-    #レスポンスの確認
-    if req.status_code == 200:
-        #レスポンスはJSON形式
-        userSearch = json.loads(req.text)
-        for tweet in userSearch:
-            #ユーザー名に"BOT"と入っているものは除外
-            if tweet["name"].find("BOT") == -1:
-                s = tweet["id_str"]
-                usernames.append(s)
-
-    else:
-        print("Error: %d" % req.status_code)
+        #レスポンスの確認
+        if req.status_code == 200:
+            #レスポンスはJSON形式
+            userSearch = json.loads(req.text)
+            for tweet in userSearch:
+                #ユーザー名に"BOT"と入っているものは除外
+                if tweet["name"].find("BOT") == -1:
+                    s = tweet["id_str"]
+                    usernames.append(s)
+                    print(tweet["name"])
+        else:
+            print("Error: %d" % req.status_code)
+        pages = pages + 1
+        print(pages)
 
 
 def getTweet(username, max_id, since_id):
@@ -69,7 +78,15 @@ def getTweet(username, max_id, since_id):
         if req.status_code == 200:
 
             limit = req.headers['x-rate-limit-remaining']
+            reset = req.headers['x-rate-limit-reset']
             print(limit)
+
+            if int(limit) == 0:
+                recoverytime = int(reset) - now_unix_time()
+                if recoverytime > 0:
+                    print("Please wait... %d" % recoverytime)
+                    time.sleep(recoverytime + 5)
+
             #レスポンスはJSON形式
             timeline = json.loads(req.text)
             try:
