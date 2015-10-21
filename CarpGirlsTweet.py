@@ -19,9 +19,6 @@ tweetCount = '200'
 userCount = '20'
 pages = '1'
 
-#OAuthでGET
-twitter = OAuth1Session(consumerKey, consumerSecret, accessToken, accessSecret)
-
 # タイムライン取得URL
 tweetUrl = "https://api.twitter.com/1.1/statuses/user_timeline.json"
 # ユーザー取得
@@ -40,8 +37,10 @@ def now_unix_time():
 
 def getUser():
     pages = 1
-    while(pages < 8):
+    while(pages < 9):
         params = {'q': search_words, 'page': str(pages), 'count': userCount}
+        #OAuthでGET
+        twitter = OAuth1Session(consumerKey, consumerSecret, accessToken, accessSecret)
         req = twitter.get(userUrl, params=params)
 
         #レスポンスの確認
@@ -61,7 +60,6 @@ def getUser():
 
 
 def getTweet(username, max_id, since_id):
-
     while(True):
         #ReTweetは除外
         params = {'user_id': username, 'count': tweetCount, 'include_rts': 'false'}
@@ -72,20 +70,23 @@ def getTweet(username, max_id, since_id):
         if since_id != -1:
             params['since_id'] = since_id
 
+        #OAuthでGET
+        twitter = OAuth1Session(consumerKey, consumerSecret, accessToken, accessSecret)
         req = twitter.get(tweetUrl, params=params)
+        time.sleep(5)
+
+        limit = req.headers['x-rate-limit-remaining']
+        reset = req.headers['x-rate-limit-reset']
+        print(limit)
+
+        if int(limit) == 0:
+            recoverytime = int(reset) - now_unix_time()
+            if recoverytime > 0:
+                print("Please wait... %d" % recoverytime)
+                time.sleep(recoverytime + 5)
 
         #レスポンスの確認
         if req.status_code == 200:
-
-            limit = req.headers['x-rate-limit-remaining']
-            reset = req.headers['x-rate-limit-reset']
-            print(limit)
-
-            if int(limit) == 0:
-                recoverytime = int(reset) - now_unix_time()
-                if recoverytime > 0:
-                    print("Please wait... %d" % recoverytime)
-                    time.sleep(recoverytime + 5)
 
             #レスポンスはJSON形式
             timeline = json.loads(req.text)
@@ -105,6 +106,8 @@ def getTweet(username, max_id, since_id):
                     fw.write("\n%s" % s)   
         else:
             print("Error: %d" % req.status_code)
+            print("waiting 5mins")
+            time.sleep(60 * 5)
 
 
 def userLoop(usernaems):
